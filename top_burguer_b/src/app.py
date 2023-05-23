@@ -2,11 +2,11 @@ from flask import Flask, jsonify, request
 from flask_jwt_extended import JWTManager, create_access_token
 from pymysql import connect
 from werkzeug.security import check_password_hash, generate_password_hash
+from flask_cors import CORS
 import pymysql.cursors
 
-# Configura la aplicación Flask
 app = Flask(__name__)
-
+CORS(app)
 
 # JWT TOKENIZER
 jwt = JWTManager(app)
