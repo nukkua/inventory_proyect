@@ -13,16 +13,13 @@ const LoginForm = () => {
         user: username,
         password: password,
       });
-      console.log(res.data); // Aquí obtienes el token
+      console.log(res.data);
     } catch (err) {
       if (err.response) {
-        // Errores HTTP que devuelve el servidor
         setError(err.response.data.error);
       } else if (err.request) {
-        // Errores que ocurren al realizar la solicitud
         setError("Error al realizar la solicitud");
       } else {
-        // Otros errores
         setError("Error al iniciar sesión");
       }
     }

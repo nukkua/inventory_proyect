@@ -1,16 +1,16 @@
 from flask import Flask, jsonify, request
-from flask_jwt_extended import JWTManager, create_access_token
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from pymysql import connect
 from werkzeug.security import check_password_hash, generate_password_hash
-from flask_cors import CORS
 import pymysql.cursors
 
+# Configura la aplicación Flask
 app = Flask(__name__)
-CORS(app)
+
 
 # JWT TOKENIZER
 jwt = JWTManager(app)
-app.config['JWT_SECRET_KEY'] = 'ultrasecret'  # replace with your secret key
+app.config['JWT_SECRET_KEY'] = 'ultrasecret'
 
 connection = pymysql.connect(host='localhost',
                                  user='root',
@@ -18,8 +18,14 @@ connection = pymysql.connect(host='localhost',
                                  db='INVENTORY_MANAGMENT',
                                  cursorclass=pymysql.cursors.DictCursor)
 
-@app.route('/create_user', methods=['POST'])
+# End Point con verificacion jwt, para crear empleados
+@app.route('/create_empleado', methods=['POST'])
+@jwt_required()
 def create_user():
+    identity = get_jwt_identity()
+    if identity['role']!= 'admin':
+        return jsonify({"error": "Unauthorized"}),403
+
     data = request.get_json()
     name = data.get('name')
     user = data.get('user')
@@ -39,7 +45,7 @@ def create_user():
     finally:
         connection.close()
 
-
+# Endpoint LOGIN
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -64,20 +70,39 @@ def login():
     finally:
         connection.close()
 
-
-@app.route('/clientes', methods=['GET'])
-def get_clientes():
+#EndPoint MenuDelDia
+@app.route('/menudeldia', methods=['GET'])
+def get_menu():
     connection.connect()
-    # Crea una conexión a la base de datos
+    try: 
+        with connection.cursor() as cursor:
+            sql = "SELECT * FROM MENU_DEL_DIA_PLATO_V"
+            cursor.execute(sql)
+            
+            platos = cursor.fetchall()
+            return jsonify(platos)
+    
+    except pymysql.Error as e:
+        return jsonify({"error": "Database error: {}".format(e)}), 500
+
+    finally:
+        connection.close()
+
+
+
+
+#Endpoints referidos a empleados
+@app.route('/empleados', methods=['GET'])
+def get_empleados():
+    connection.connect()
     try:
         with connection.cursor() as cursor:
-            # Consulta los nombres de los clientes
-            sql = "SELECT Nombre FROM Cliente"
+            sql = "SELECT ID_Empleado, Nombre, Usuario, Contrasena, Rol FROM Empleado"
             cursor.execute(sql)
-            clientes = cursor.fetchall()
-            nombres = [cliente['Nombre'] for cliente in clientes]
-            
-            return jsonify(nombres)
+            empleados = cursor.fetchall()
+
+            resultados = [{"id_empleado":empleado['ID_Empleado'],"nombre": empleado['Nombre'], "usuario": empleado['Usuario'], "contrasena": empleado['Contrasena'], "rol": empleado['Rol']} for empleado in empleados]
+            return jsonify(resultados)
 
     except pymysql.Error as e:
         return jsonify({"error": "Database error: {}".format(e)}), 500
@@ -86,6 +111,9 @@ def get_clientes():
         connection.close()
 
 
+
+
+# Endpoints referidos a proveedores
 @app.route('/proveedores', methods = ['GET'])
 def get_proveedores():
     connection.connect()
@@ -98,7 +126,6 @@ def get_proveedores():
             # Obtiene los resultados
             proveedores = cursor.fetchall()
             
-            # Extrae solo los nombres de los clientes
             resultados = [{"id_proveedor":proveedor['ID_Proveedor'],"nombre": proveedor['Nombre'], "telefono": proveedor['Telefono'], "direccion": proveedor['Direccion']} for proveedor in proveedores]
 
 
@@ -113,4 +140,9 @@ def get_proveedores():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+
+
+
 
